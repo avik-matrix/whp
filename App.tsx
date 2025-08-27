@@ -6,9 +6,11 @@ import {
   Easing,
   Platform,
   StyleSheet,
+  Text,
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 
 const { width, height } = Dimensions.get("window");
 
@@ -50,9 +52,12 @@ export default function App() {
 
     // Launch each color band with different speed + delay
     // so they overlap naturally instead of stacking together
-    const stopRed = startSeamless(redX, 8000, 0);        // fastest, starts immediately
-    const stopGreen = startSeamless(greenX, 10000, 1200); // medium speed, slight delay
-    const stopBlue = startSeamless(blueX, 12000, 2400);   // slowest, starts last
+    const SPEED = 0.5; // 0.5 = twice as fast, 2 = half as fast
+
+    const stopRed = startSeamless(redX, 8000 * SPEED, 0);
+    const stopGreen = startSeamless(greenX, 10000 * SPEED, 1200 * SPEED);
+    const stopBlue = startSeamless(blueX, 12000 * SPEED, 2400 * SPEED);
+
 
     return () => {
       stopRed && stopRed();
@@ -66,6 +71,7 @@ export default function App() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
       {/**
        * BASE GRADIENT (static, always visible background).
        * This is the dark purplish background from CSS `--gradient-hero`.
@@ -244,6 +250,7 @@ export default function App() {
        * devices it smooths out banding/buffering in gradients.
        */}
       {Platform.OS === "android" && <View style={styles.androidShim} />}
+      <Text style={{ color: '#fff', padding: 30 }} >Hello React</Text>
     </View>
   );
 }
