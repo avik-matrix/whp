@@ -13,55 +13,64 @@ import { LinearGradient } from "expo-linear-gradient";
 const { width, height } = Dimensions.get("window");
 
 export default function App() {
-  // White sheen
-  const sheen = useRef(new Animated.Value(-width)).current;
-  const sheenOpacity = useRef(new Animated.Value(0.18)).current;
+  // band width: each moving gradient stripe is very wide so that
+  // when rotated diagonally it still covers the full screen area.
+  const bandWidth = width * 2.5;
+  const containerWidth = bandWidth * 2; // two gradient copies placed side-by-side (for seamless loop)
+  const containerHeight = height * 1.6;
 
-  // Magenta
-  const magenta = useRef(new Animated.Value(-width * 1.2)).current;
-  const magentaOpacity = useRef(new Animated.Value(0.06)).current;
-
-  // Cyan
-  const cyan = useRef(new Animated.Value(width)).current;
-  const cyanOpacity = useRef(new Animated.Value(0.06)).current;
-
-  // Warm pink/orange
-  const warm = useRef(new Animated.Value(-width * 1.5)).current;
-  const warmOpacity = useRef(new Animated.Value(0.05)).current;
+  // animated values to control horizontal translation of each stripe
+  const redX = useRef(new Animated.Value(0)).current;
+  const greenX = useRef(new Animated.Value(0)).current;
+  const blueX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // animations identical to before…
-    const animateLoop = (val: Animated.Value, to: number, duration: number, reset: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(val, { toValue: to, duration, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-          Animated.timing(val, { toValue: reset, duration: 0, useNativeDriver: true }),
-        ])
-      ).start();
+    /**
+     * Utility: creates an infinite loop moving the gradient
+     * from `0` → `-bandWidth`, so the 2nd copy slides in and
+     * creates a seamless endless scroll.
+     */
+    const startSeamless = (anim: Animated.Value, duration: number, delay = 0) => {
+      const loopAnim = Animated.loop(
+        Animated.timing(anim, {
+          toValue: -bandWidth,
+          duration,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+      if (delay > 0) {
+        const t = setTimeout(() => loopAnim.start(), delay);
+        return () => clearTimeout(t);
+      } else {
+        loopAnim.start();
+        return () => loopAnim.stop();
+      }
+    };
 
-    animateLoop(sheen, width * 2, 4200, -width);
-    animateLoop(magenta, width * 1.6, 9000, -width * 1.2);
-    animateLoop(cyan, -width * 1.6, 12000, width);
-    animateLoop(warm, width * 1.8, 14000, -width * 1.5);
+    // Launch each color band with different speed + delay
+    // so they overlap naturally instead of stacking together
+    const stopRed = startSeamless(redX, 8000, 0);        // fastest, starts immediately
+    const stopGreen = startSeamless(greenX, 10000, 1200); // medium speed, slight delay
+    const stopBlue = startSeamless(blueX, 12000, 2400);   // slowest, starts last
 
-    // opacity breathing
-    const breathe = (val: Animated.Value, min: number, max: number, duration: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(val, { toValue: min, duration, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-          Animated.timing(val, { toValue: max, duration, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        ])
-      ).start();
+    return () => {
+      stopRed && stopRed();
+      stopGreen && stopGreen();
+      stopBlue && stopBlue();
+    };
+  }, [redX, greenX, blueX, bandWidth]);
 
-    breathe(sheenOpacity, 0.10, 0.18, 2100);
-    breathe(magentaOpacity, 0.035, 0.06, 4500);
-    breathe(cyanOpacity, 0.03, 0.06, 6000);
-    breathe(warmOpacity, 0.025, 0.05, 7000);
-  }, []);
+  // shortcut: apply Animated.Value as translateX transform
+  const tx = (anim: Animated.Value) => ({ translateX: anim });
 
   return (
     <View style={styles.container}>
-      {/* 🎨 Base hero gradient */}
+      {/**
+       * BASE GRADIENT (static, always visible background).
+       * This is the dark purplish background from CSS `--gradient-hero`.
+       * It provides depth and ensures the screen is never empty.
+       */}
       <LinearGradient
         colors={["hsl(240,10%,3.9%)", "hsl(270,30%,15%)"]}
         start={{ x: 0, y: 0 }}
@@ -69,70 +78,171 @@ export default function App() {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* ✨ White sheen */}
+      {/**
+       * MOVING RED STRIPE
+       * Two identical gradient strips placed side-by-side, sliding horizontally.
+       * Center has a reddish hue with transparency fading to edges → creates
+       * a “tint” that moves across the screen.
+       */}
       <Animated.View
         pointerEvents="none"
         style={[
-          styles.overlay,
-          { opacity: sheenOpacity, transform: [{ translateX: sheen }, { rotate: "-18deg" }] },
+          styles.band,
+          {
+            left: -bandWidth * 0.5,
+            width: containerWidth,
+            height: containerHeight,
+            transform: [{ rotate: "-15deg" }, tx(redX)], // slight diagonal rotation
+            opacity: 0.9,
+          },
         ]}
       >
-        <LinearGradient
-          colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.85)", "rgba(255,255,255,0)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ width: width * 1.6, height: height * 1.25 }}
-        />
+        <View style={{ flexDirection: "row" }}>
+          <LinearGradient
+            colors={[
+              "rgba(255,60,126,0)",   // transparent edge
+              "rgba(255,60,126,0.22)", // reddish core
+              "rgba(255,60,126,0)",   // transparent edge
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ width: bandWidth, height: containerHeight }}
+          />
+          <LinearGradient
+            colors={[
+              "rgba(255,60,126,0)",
+              "rgba(255,60,126,0.22)",
+              "rgba(255,60,126,0)",
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ width: bandWidth, height: containerHeight }}
+          />
+        </View>
       </Animated.View>
 
-      {/* 🌸 Magenta (CSS primary) */}
+      {/**
+       * MOVING GREEN STRIPE
+       * Same as above but with a green tint, slower and rotated opposite
+       * to create variation. Overlaps with red/blue for dynamic hues.
+       */}
       <Animated.View
         pointerEvents="none"
         style={[
-          styles.overlay,
-          { opacity: magentaOpacity, transform: [{ translateX: magenta }, { rotate: "-10deg" }] },
+          styles.band,
+          {
+            left: -bandWidth * 0.6,
+            width: containerWidth,
+            height: containerHeight,
+            transform: [{ rotate: "12deg" }, tx(greenX)],
+            opacity: 0.9,
+          },
         ]}
       >
-        <LinearGradient
-          colors={["hsla(270,95%,75%,0)", "hsla(320,85%,70%,0.15)", "hsla(270,95%,75%,0)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ width: width * 1.8, height: height * 1.2 }}
-        />
+        <View style={{ flexDirection: "row" }}>
+          <LinearGradient
+            colors={[
+              "rgba(42,255,144,0)",
+              "rgba(42,255,144,0.18)",
+              "rgba(42,255,144,0)",
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ width: bandWidth, height: containerHeight }}
+          />
+          <LinearGradient
+            colors={[
+              "rgba(42,255,144,0)",
+              "rgba(42,255,144,0.18)",
+              "rgba(42,255,144,0)",
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ width: bandWidth, height: containerHeight }}
+          />
+        </View>
       </Animated.View>
 
-      {/* 💠 Cyan (CSS secondary) */}
+      {/**
+       * MOVING BLUE STRIPE
+       * Similar idea again, but bluish tint, slowest speed, different angle.
+       * Because all three overlap, the visual blends into shifting purple,
+       * teal, and magenta — same as the website background effect.
+       */}
       <Animated.View
         pointerEvents="none"
         style={[
-          styles.overlay,
-          { opacity: cyanOpacity, transform: [{ translateX: cyan }, { rotate: "12deg" }] },
+          styles.band,
+          {
+            left: -bandWidth * 0.55,
+            width: containerWidth,
+            height: containerHeight,
+            transform: [{ rotate: "-10deg" }, tx(blueX)],
+            opacity: 0.9,
+          },
         ]}
       >
-        <LinearGradient
-          colors={["hsla(220,95%,65%,0)", "hsla(180,95%,65%,0.15)", "hsla(220,95%,65%,0)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ width: width * 1.8, height: height * 1.2 }}
-        />
+        <View style={{ flexDirection: "row" }}>
+          <LinearGradient
+            colors={[
+              "rgba(60,182,255,0)",
+              "rgba(60,182,255,0.18)",
+              "rgba(60,182,255,0)",
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ width: bandWidth, height: containerHeight }}
+          />
+          <LinearGradient
+            colors={[
+              "rgba(60,182,255,0)",
+              "rgba(60,182,255,0.18)",
+              "rgba(60,182,255,0)",
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ width: bandWidth, height: containerHeight }}
+          />
+        </View>
       </Animated.View>
 
-      {/* 🔥 Warm accent (CSS accent) */}
+      {/**
+       * SUBTLE WHITE SHEEN OVERLAY
+       * A faint diagonal white gradient overlaid above everything.
+       * Adds a glossy "sheen" so transitions feel softer and less flat.
+       */}
       <Animated.View
         pointerEvents="none"
         style={[
-          styles.overlay,
-          { opacity: warmOpacity, transform: [{ translateX: warm }, { rotate: "-6deg" }] },
+          StyleSheet.absoluteFill,
+          {
+            opacity: 0.06,
+            transform: [{ rotate: "-10deg" }],
+          },
         ]}
       >
         <LinearGradient
-          colors={["hsla(340, 78%, 45%, 0.00)", "hsla(20, 78%, 44%, 0.12)", "hsla(340, 6%, 42%, 0.00)"]}
+          colors={[
+            "rgba(255,255,255,0)",
+            "rgba(255,255,255,0.28)",
+            "rgba(255,255,255,0)",
+          ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={{ width: width * 2, height: height * 1.3 }}
+          style={{
+            width: width * 2,
+            height: height * 2,
+            left: -width * 0.5,
+            top: -height * 0.2,
+          }}
         />
       </Animated.View>
 
+      {/**
+       * ANDROID SHIM
+       * A tiny nearly-transparent black overlay. On some Android
+       * devices it smooths out banding/buffering in gradients.
+       */}
       {Platform.OS === "android" && <View style={styles.androidShim} />}
     </View>
   );
@@ -143,17 +253,14 @@ const styles = StyleSheet.create({
     position: "absolute",
     width,
     height,
-    backgroundColor: "black",
+    backgroundColor: "black", // base fallback background
   },
-  overlay: {
+  band: {
     position: "absolute",
-    left: -width * 0.4,
-    top: -height * 0.1,
-    width: width * 2.8,
-    height: height * 1.4,
+    top: -height * 0.4,
   },
   androidShim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: "rgba(0,0,0,0.02)",
   },
 });
