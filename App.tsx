@@ -1,5 +1,5 @@
 // App.tsx
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -15,23 +15,27 @@ import { StatusBar } from "expo-status-bar";
 
 const { width: W, height: H } = Dimensions.get("window");
 
-// Only used for the moving tint bands (not the base)
-const BAND_CORE_ALPHA = 0.68;
-
-// import the EXACT background image so it's pixel-perfect
-// (adjust this path to wherever you keep the file)
+// Use your exact PNG for pixel-to-pixel base
 const BG = require("./assets/Splash-Whippitz.png");
 
+// Visual tuning
+const BAND_CORE_ALPHA = 0.68;
+
 export default function App() {
-  // Make bands large so they stay on screen while rotated
+  // band geometry
   const bandWidth = W * 3.2;
   const containerWidth = bandWidth * 2;
   const containerHeight = H * 2.2;
 
+  // band animations
   const plumX = useRef(new Animated.Value(0)).current;
   const amberX = useRef(new Animated.Value(0)).current;
   const forestX = useRef(new Animated.Value(0)).current;
   const sweepAnim = useRef(new Animated.Value(0)).current;
+
+  // image fade-in overlay (prevents any flash before PNG is ready)
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const coverOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const startSeamless = (anim: Animated.Value, duration: number, delay = 0) => {
@@ -83,7 +87,19 @@ export default function App() {
       stopAmber?.();
       stopForest?.();
     };
-  }, [plumX, amberX, forestX, sweepAnim]);
+  }, [plumX, amberX, forestX, sweepAnim, bandWidth]);
+
+  // fade the solid cover only after the PNG has loaded
+  useEffect(() => {
+    if (imgLoaded) {
+      Animated.timing(coverOpacity, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [imgLoaded, coverOpacity]);
 
   const tx = (anim: Animated.Value) => ({ translateX: anim });
 
@@ -91,94 +107,121 @@ export default function App() {
     <View style={styles.container}>
       <StatusBar style="light" />
 
-      {/* ✅ Pixel-perfect base: use the provided image directly */}
+      {/* Pixel-perfect base image */}
       <ImageBackground
         source={BG}
         style={StyleSheet.absoluteFill}
         resizeMode="cover"
+        onLoad={() => setImgLoaded(true)}
+      >
+        {/* Moving tint bands */}
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.band,
+            {
+              width: containerWidth,
+              height: containerHeight,
+              transform: [{ rotate: "-15deg" }, tx(plumX)],
+            },
+          ]}
+        >
+          <RowBands
+            bandWidth={bandWidth}
+            bandHeight={containerHeight}
+            mid={`rgba(43,7,33,${BAND_CORE_ALPHA})`} // plum #2B0721
+          />
+        </Animated.View>
+
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.band,
+            {
+              width: containerWidth,
+              height: containerHeight,
+              transform: [{ rotate: "12deg" }, tx(amberX)],
+            },
+          ]}
+        >
+          <RowBands
+            bandWidth={bandWidth}
+            bandHeight={containerHeight}
+            mid={`rgba(46,32,0,${BAND_CORE_ALPHA - 0.06})`} // amber #2E2000
+          />
+        </Animated.View>
+
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.band,
+            {
+              width: containerWidth,
+              height: containerHeight,
+              transform: [{ rotate: "-10deg" }, tx(forestX)],
+            },
+          ]}
+        >
+          <RowBands
+            bandWidth={bandWidth}
+            bandHeight={containerHeight}
+            mid={`rgba(2,45,9,${BAND_CORE_ALPHA - 0.10})`} // forest #022D09
+          />
+        </Animated.View>
+
+        {/* Optional black sweep */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            left: -W * 2,
+            top: -H * 0.6,
+            width: W * 5,
+            height: H * 2,
+            transform: [
+              {
+                translateX: sweepAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [W * 2, -W * 2],
+                }),
+              },
+              { rotate: "-20deg" },
+            ],
+            opacity: sweepAnim.interpolate({
+              inputRange: [0, 0.5, 1],
+              outputRange: [0, 0.25, 0],
+            }),
+          }}
+        >
+          <LinearGradient
+            colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.6)", "rgba(0,0,0,0)"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ flex: 1 }}
+          />
+        </Animated.View>
+
+        {/* Center content */}
+        <View style={styles.center} pointerEvents="none">
+          <Text style={styles.logo}>WHIPPITZ</Text>
+        </View>
+      </ImageBackground>
+
+      {/* Solid cover that fades out after image load (prevents any flash) */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFillObject,
+          { backgroundColor: "#300317", opacity: coverOpacity },
+        ]}
       />
-
-      {/* 🔴 Moving tint bands on top of the image (no change to base) */}
-      {/* PLUM */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.band,
-          { width: containerWidth, height: containerHeight, transform: [{ rotate: "-15deg" }, tx(plumX)] },
-        ]}
-      >
-        <RowBands
-          bandWidth={bandWidth}
-          bandHeight={containerHeight}
-          mid={`rgba(43,7,33,${BAND_CORE_ALPHA})`}   // #2B0721
-        />
-      </Animated.View>
-
-      {/* AMBER */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.band,
-          { width: containerWidth, height: containerHeight, transform: [{ rotate: "12deg" }, tx(amberX)] },
-        ]}
-      >
-        <RowBands
-          bandWidth={bandWidth}
-          bandHeight={containerHeight}
-          mid={`rgba(46,32,0,${BAND_CORE_ALPHA - 0.06})`} // #2E2000
-        />
-      </Animated.View>
-
-      {/* FOREST */}
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.band,
-          { width: containerWidth, height: containerHeight, transform: [{ rotate: "-10deg" }, tx(forestX)] },
-        ]}
-      >
-        <RowBands
-          bandWidth={bandWidth}
-          bandHeight={containerHeight}
-          mid={`rgba(2,45,9,${BAND_CORE_ALPHA - 0.10})`}  // #022D09
-        />
-      </Animated.View>
-
-      {/* optional: black sweep for extra depth */}
-      <Animated.View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          left: -W * 2,
-          top: -H * 0.6,
-          width: W * 5,
-          height: H * 2,
-          transform: [
-            { translateX: sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [W * 2, -W * 2] }) },
-            { rotate: "-20deg" },
-          ],
-          opacity: sweepAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 0.25, 0] }),
-        }}
-      >
-        <LinearGradient
-          colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.6)", "rgba(0,0,0,0)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={{ flex: 1 }}
-        />
-      </Animated.View>
-
-      {/* Center content (unchanged) */}
-      <View style={styles.center} pointerEvents="none">
-        <Text style={styles.logo}>WHIPPITZ</Text>
-      </View>
 
       {Platform.OS === "android" && <View style={styles.androidShim} />}
     </View>
   );
 }
 
-/** helper: renders two side-by-side horizontal gradients for a seamless loop */
+/** draws two horizontal gradients side-by-side for seamless scrolling */
 function RowBands({
   bandWidth,
   bandHeight,
@@ -205,9 +248,31 @@ function RowBands({
 }
 
 const styles = StyleSheet.create({
-  container: { position: "absolute", width: W, height: H, backgroundColor: "black" },
-  band: { position: "absolute", top: -H * 0.6, left: -W * 0.6, opacity: 1 },
-  center: { ...StyleSheet.absoluteFillObject, justifyContent: "center", alignItems: "center" },
-  logo: { color: "#fff", fontSize: 32, fontWeight: "bold", letterSpacing: 2 },
-  androidShim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.02)" },
+  container: {
+    position: "absolute",
+    width: W,
+    height: H,
+    backgroundColor: "#300317", // solid fallback matches your PNG's top tone
+  },
+  band: {
+    position: "absolute",
+    top: -H * 0.6,
+    left: -W * 0.6,
+    opacity: 1,
+  },
+  center: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logo: {
+    color: "#fff",
+    fontSize: 32,
+    fontWeight: "bold",
+    letterSpacing: 2,
+  },
+  androidShim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.02)",
+  },
 });
