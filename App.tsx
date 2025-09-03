@@ -20,7 +20,7 @@ const BAND_CORE_ALPHA = 0.55;
 // New color sequence based on gradient image
 const BG_COLORS = [
   "#006400", // 0: DarkGreen
-  "#024902ff", // 1: DarkGreen variant
+  "#13c913ff", // 1: DarkGreen variant
   "#800080", // 2: Purple
   "#000080", // 3: NavyBlue
 ];
@@ -211,7 +211,7 @@ export default function App() {
           style={[styles.band, { width: containerWidth, height: containerHeight, transform: [{ rotate: "-15deg" }, tx(plumX)] }]}
         >
           <RowBands bandWidth={bandWidth} bandHeight={containerHeight} mid={`rgba(2,73,2,${BAND_CORE_ALPHA - 0.06})`} />
-          <BandShimmer shimmerX={shimmerX} shimmerOpacity={shimmerOpacity} color="rgba(1,82,1,0.35)" />
+          <BandShimmer shimmerX={shimmerX} shimmerOpacity={shimmerOpacity} color="rgba(16, 206, 16, 0.35)" />
         </Animated.View>
 
         {/* Purple Band */}
