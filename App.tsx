@@ -18,11 +18,29 @@ const BG = require("./assets/Splash-Whippitz.png");
 const BAND_CORE_ALPHA = 0.55;
 
 const BG_COLORS = [
-  "#006400", // DarkGreen
-  "#13c913ff", // Green variant
-  "#800080", // Purple
-  "#000080", // Navy
+  "#006400",    // DarkGreen
+  "#13c913ff",  // Green variant
+  "#800080",    // Purple
+  "#000080",    // Navy
 ];
+
+// 🔧 Helper: make a transparent version of any color
+function toTransparent(color: string) {
+  if (color.startsWith("#")) {
+    const bigint = parseInt(color.slice(1, 7), 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r},${g},${b},0)`; // transparent version
+  }
+  if (color.startsWith("rgba")) {
+    return color.replace(/[\d.]+\)$/, "0)");
+  }
+  if (color.startsWith("rgb")) {
+    return color.replace("rgb", "rgba").replace(")", ",0)");
+  }
+  return "rgba(0,0,0,0)";
+}
 
 export default function App() {
   const bandWidth = W * 3.2;
@@ -36,7 +54,7 @@ export default function App() {
   const sweepAnim = useRef(new Animated.Value(0)).current;
 
   const bgAnim = useRef(new Animated.Value(0)).current;
-  const shimmerX = useRef(new Animated.Value(-W * 2)).current; // start offscreen
+  const shimmerX = useRef(new Animated.Value(-W * 2)).current; 
   const shimmerOpacity = useRef(new Animated.Value(0)).current;
 
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -61,6 +79,7 @@ export default function App() {
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
+          // reset offscreen instantly (invisible, so no flicker)
           Animated.timing(anim, {
             toValue: 0,
             duration: 0,
@@ -72,13 +91,11 @@ export default function App() {
       return () => loopAnim.stop();
     };
 
-    // ⚡ Faster speeds
     const stopPlum = startSeamless(plumX, 4000, 0);
     const stopGreenVariant = startSeamless(greenVariantX, 4500, 2000);
     const stopAmber = startSeamless(amberX, 5000, 3000);
     const stopForest = startSeamless(forestX, 6000, 4000);
 
-    // Sweep
     const sweepCycle = () => {
       Animated.sequence([
         Animated.delay(1500),
@@ -93,7 +110,6 @@ export default function App() {
     };
     sweepCycle();
 
-    // Background cycle faster
     const forward = [1, 2, 3];
     const backward = [3, 2, 1, 0];
     const sequence = [...forward, ...backward];
@@ -112,7 +128,6 @@ export default function App() {
       });
     }
 
-    // ✅ Shimmer without flicker
     const shimmerLoop = Animated.loop(
       Animated.sequence([
         Animated.parallel([
@@ -137,7 +152,6 @@ export default function App() {
             }),
           ]),
         ]),
-        // Reset shimmer offscreen while invisible
         Animated.parallel([
           Animated.timing(shimmerX, {
             toValue: -W * 2,
@@ -282,12 +296,13 @@ export default function App() {
 }
 
 function RowBands({ bandWidth, bandHeight, mid }: { bandWidth: number; bandHeight: number; mid: string }) {
+  const transparent = toTransparent(mid);
   return (
     <View style={{ flex: 1, flexDirection: "row" }}>
       {[0, 1].map((i) => (
         <LinearGradient
           key={i}
-          colors={["rgba(0,0,0,0)", mid, "rgba(0,0,0,0)"]}
+          colors={[transparent, mid, transparent]}
           locations={[0, 0.5, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -299,13 +314,14 @@ function RowBands({ bandWidth, bandHeight, mid }: { bandWidth: number; bandHeigh
 }
 
 function BandShimmer({ shimmerX, shimmerOpacity, color }: { shimmerX: Animated.Value; shimmerOpacity: Animated.Value; color: string }) {
+  const transparent = toTransparent(color);
   return (
     <Animated.View
       pointerEvents="none"
       style={{ ...StyleSheet.absoluteFillObject, opacity: shimmerOpacity, transform: [{ translateX: shimmerX }] }}
     >
       <LinearGradient
-        colors={["rgba(0,0,0,0)", color, "rgba(0,0,0,0)"]}
+        colors={[transparent, color, transparent]}
         locations={[0, 0.5, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
