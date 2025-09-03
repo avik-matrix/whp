@@ -17,12 +17,11 @@ const BG = require("./assets/Splash-Whippitz.png");
 
 const BAND_CORE_ALPHA = 0.55;
 
-// New color sequence based on gradient image
 const BG_COLORS = [
-  "#006400", // 0: DarkGreen
-  "#13c913ff", // 1: DarkGreen variant
-  "#800080", // 2: Purple
-  "#000080", // 3: NavyBlue
+  "#006400", // DarkGreen
+  "#13c913ff", // Green variant
+  "#800080", // Purple
+  "#000080", // Navy
 ];
 
 export default function App() {
@@ -33,16 +32,13 @@ export default function App() {
   const plumX = useRef(new Animated.Value(0)).current;
   const amberX = useRef(new Animated.Value(0)).current;
   const forestX = useRef(new Animated.Value(0)).current;
+  const greenVariantX = useRef(new Animated.Value(0)).current;
   const sweepAnim = useRef(new Animated.Value(0)).current;
 
-  // Background anim, starting at 0 (DarkGreen)
   const bgAnim = useRef(new Animated.Value(0)).current;
-
-  // Shimmer
   const shimmerX = useRef(new Animated.Value(0)).current;
   const shimmerOpacity = useRef(new Animated.Value(0)).current;
 
-  // Cover fade
   const [imgLoaded, setImgLoaded] = useState(false);
   const coverOpacity = useRef(new Animated.Value(1)).current;
 
@@ -50,20 +46,19 @@ export default function App() {
     Animated.timing(bgAnim, {
       toValue: to,
       duration,
-      easing: Easing.inOut(Easing.sin), // Wavy easing for smooth transition
+      easing: Easing.inOut(Easing.sin),
       useNativeDriver: false,
     });
 
   useEffect(() => {
-    // Bands
     const startSeamless = (anim: Animated.Value, duration: number, delay = 0) => {
       const loopAnim = Animated.loop(
         Animated.sequence([
-          Animated.delay(delay / 2),
+          Animated.delay(delay),
           Animated.timing(anim, {
             toValue: -bandWidth,
-            duration: duration / 2,
-            easing: Easing.inOut(Easing.sin), // Wavy easing for bands
+            duration,
+            easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.timing(anim, {
@@ -76,70 +71,67 @@ export default function App() {
       loopAnim.start();
       return () => loopAnim.stop();
     };
-    const SPEED = 0.85;
-    const stopPlum = startSeamless(plumX, 8000 * SPEED, 0);
-    const stopAmber = startSeamless(amberX, 10000 * SPEED, 1000 * SPEED);
-    const stopForest = startSeamless(forestX, 12000 * SPEED, 2000 * SPEED);
 
-    // Sweep overlay
+    // ⚡ Faster speeds (cut in half)
+    const stopPlum = startSeamless(plumX, 4000, 0);
+    const stopGreenVariant = startSeamless(greenVariantX, 4500, 2000);
+    const stopAmber = startSeamless(amberX, 5000, 3000);
+    const stopForest = startSeamless(forestX, 6000, 4000);
+
+    // Sweep faster
     const sweepCycle = () => {
       Animated.sequence([
-        Animated.delay(6000 / 2),
+        Animated.delay(1500),
         Animated.timing(sweepAnim, {
           toValue: 1,
-          duration: 900 / 2,
-          easing: Easing.inOut(Easing.sin), // Wavy easing for sweep
+          duration: 600,
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
-        Animated.timing(sweepAnim, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
+        Animated.timing(sweepAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
       ]).start(sweepCycle);
     };
     sweepCycle();
 
-    // Background bounce sequence, starting with DarkGreen
-    const forward = [1, 2, 3]; // Move to DarkGreen variant, Purple, then NavyBlue
-    const backward = [3, 2, 1, 0]; // Back to NavyBlue, Purple, DarkGreen variant, DarkGreen
-    const sequence = [...forward, ...backward]; // Start with forward sequence immediately
+    // Background cycle faster
+    const forward = [1, 2, 3];
+    const backward = [3, 2, 1, 0];
+    const sequence = [...forward, ...backward];
 
     const runLoop = () => {
-      Animated.sequence(
-        sequence.map((step) => animateStep(step, 6000 / 2)) // Increased duration for smoother transitions
-      ).start(runLoop);
+      Animated.sequence(sequence.map((step) => animateStep(step, 3000))).start(runLoop);
     };
 
-    // Start animation only after image is loaded
     if (imgLoaded) {
       Animated.sequence([
-        animateStep(1, 2500 / 2), // Slightly longer transition for smoothness
+        animateStep(0, 0),
+        Animated.delay(1000),
+        animateStep(1, 1500),
       ]).start(() => {
         runLoop();
       });
     }
 
-    // Shimmer
+    // Shimmer faster
     const shimmerLoop = Animated.loop(
       Animated.sequence([
         Animated.parallel([
           Animated.timing(shimmerX, {
             toValue: W * 2,
-            duration: 8000 / 2,
-            easing: Easing.inOut(Easing.sin), // Wavy easing for shimmer
+            duration: 4000,
+            easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.sequence([
             Animated.timing(shimmerOpacity, {
               toValue: 0.18,
-              duration: 2000 / 2,
+              duration: 1000,
               easing: Easing.inOut(Easing.sin),
               useNativeDriver: true,
             }),
             Animated.timing(shimmerOpacity, {
               toValue: 0,
-              duration: 2000 / 2,
+              duration: 1000,
               easing: Easing.inOut(Easing.sin),
               useNativeDriver: true,
             }),
@@ -152,6 +144,7 @@ export default function App() {
 
     return () => {
       stopPlum?.();
+      stopGreenVariant?.();
       stopAmber?.();
       stopForest?.();
       shimmerLoop.stop();
@@ -162,7 +155,7 @@ export default function App() {
     if (imgLoaded) {
       Animated.timing(coverOpacity, {
         toValue: 0,
-        duration: 100 / 2, // Faster fade to show image quicker
+        duration: 150,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }).start();
@@ -179,14 +172,12 @@ export default function App() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-
-      {/* PNG as base background */}
       <ImageBackground
         source={BG}
         style={StyleSheet.absoluteFill}
         resizeMode="cover"
+        onLoadEnd={() => setImgLoaded(true)}
       >
-        {/* Animated Gradient on top */}
         <Animated.View style={StyleSheet.absoluteFill}>
           <LinearGradient
             colors={[bgColors as any, bgColors as any]}
@@ -196,25 +187,25 @@ export default function App() {
           />
         </Animated.View>
 
-        {/* DarkGreen Band */}
+        {/* DarkGreen */}
         <Animated.View
           pointerEvents="none"
           style={[styles.band, { width: containerWidth, height: containerHeight, transform: [{ rotate: "-15deg" }, tx(plumX)] }]}
         >
-          <RowBands bandWidth={bandWidth} bandHeight={containerHeight} mid={`rgba(0,100,0,${BAND_CORE_ALPHA - 0.06})`} />
-          <BandShimmer shimmerX={shimmerX} shimmerOpacity={shimmerOpacity} color="rgba(0,100,0,0.35)" />
+          <RowBands bandWidth={bandWidth} bandHeight={containerHeight} mid={`rgba(0,100,0,${BAND_CORE_ALPHA})`} />
+          <BandShimmer shimmerX={shimmerX} shimmerOpacity={shimmerOpacity} color="rgba(0,100,0,0.45)" />
         </Animated.View>
 
-        {/* DarkGreen Variant Band */}
+        {/* Variant Green */}
         <Animated.View
           pointerEvents="none"
-          style={[styles.band, { width: containerWidth, height: containerHeight, transform: [{ rotate: "-15deg" }, tx(plumX)] }]}
+          style={[styles.band, { width: containerWidth, height: containerHeight, transform: [{ rotate: "-15deg" }, tx(greenVariantX)] }]}
         >
-          <RowBands bandWidth={bandWidth} bandHeight={containerHeight} mid={`rgba(2,73,2,${BAND_CORE_ALPHA - 0.06})`} />
-          <BandShimmer shimmerX={shimmerX} shimmerOpacity={shimmerOpacity} color="rgba(16, 206, 16, 0.35)" />
+          <RowBands bandWidth={bandWidth} bandHeight={containerHeight} mid={`rgba(16,206,16,${BAND_CORE_ALPHA - 0.1})`} />
+          <BandShimmer shimmerX={shimmerX} shimmerOpacity={shimmerOpacity} color="rgba(16,206,16,0.4)" />
         </Animated.View>
 
-        {/* Purple Band */}
+        {/* Purple */}
         <Animated.View
           pointerEvents="none"
           style={[styles.band, { width: containerWidth, height: containerHeight, transform: [{ rotate: "12deg" }, tx(amberX)] }]}
@@ -223,12 +214,12 @@ export default function App() {
           <BandShimmer shimmerX={shimmerX} shimmerOpacity={shimmerOpacity} color="rgba(128,0,128,0.54)" />
         </Animated.View>
 
-        {/* NavyBlue Band */}
+        {/* Navy */}
         <Animated.View
           pointerEvents="none"
           style={[styles.band, { width: containerWidth, height: containerHeight, transform: [{ rotate: "-10deg" }, tx(forestX)] }]}
         >
-          <RowBands bandWidth={bandWidth} bandHeight={containerHeight} mid={`rgba(0,0,128,${BAND_CORE_ALPHA - 0.10})`} />
+          <RowBands bandWidth={bandWidth} bandHeight={containerHeight} mid={`rgba(0,0,128,${BAND_CORE_ALPHA})`} />
           <BandShimmer shimmerX={shimmerX} shimmerOpacity={shimmerOpacity} color="rgba(0,0,128,0.54)" />
         </Animated.View>
 
@@ -264,19 +255,14 @@ export default function App() {
           />
         </Animated.View>
 
-        {/* Center */}
         <View style={styles.center} pointerEvents="none">
           <Text style={styles.logo}>WHIPPITZ</Text>
         </View>
       </ImageBackground>
 
-      {/* Cover */}
       <Animated.View
         pointerEvents="none"
-        style={[
-          StyleSheet.absoluteFillObject,
-          { backgroundColor: "transparent", opacity: coverOpacity },
-        ]}
+        style={[StyleSheet.absoluteFillObject, { backgroundColor: "transparent", opacity: coverOpacity }]}
       />
       {Platform.OS === "android" && <View style={styles.androidShim} />}
     </View>
