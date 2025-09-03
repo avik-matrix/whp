@@ -36,7 +36,7 @@ export default function App() {
   const sweepAnim = useRef(new Animated.Value(0)).current;
 
   const bgAnim = useRef(new Animated.Value(0)).current;
-  const shimmerX = useRef(new Animated.Value(0)).current;
+  const shimmerX = useRef(new Animated.Value(-W * 2)).current; // start offscreen
   const shimmerOpacity = useRef(new Animated.Value(0)).current;
 
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -72,13 +72,13 @@ export default function App() {
       return () => loopAnim.stop();
     };
 
-    // ⚡ Faster speeds (cut in half)
+    // ⚡ Faster speeds
     const stopPlum = startSeamless(plumX, 4000, 0);
     const stopGreenVariant = startSeamless(greenVariantX, 4500, 2000);
     const stopAmber = startSeamless(amberX, 5000, 3000);
     const stopForest = startSeamless(forestX, 6000, 4000);
 
-    // Sweep faster
+    // Sweep
     const sweepCycle = () => {
       Animated.sequence([
         Animated.delay(1500),
@@ -112,7 +112,7 @@ export default function App() {
       });
     }
 
-    // Shimmer faster
+    // ✅ Shimmer without flicker
     const shimmerLoop = Animated.loop(
       Animated.sequence([
         Animated.parallel([
@@ -137,7 +137,19 @@ export default function App() {
             }),
           ]),
         ]),
-        Animated.timing(shimmerX, { toValue: -W * 2, duration: 0, useNativeDriver: true }),
+        // Reset shimmer offscreen while invisible
+        Animated.parallel([
+          Animated.timing(shimmerX, {
+            toValue: -W * 2,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerOpacity, {
+            toValue: 0,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ]),
       ])
     );
     if (imgLoaded) shimmerLoop.start();
