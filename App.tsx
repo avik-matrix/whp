@@ -11,6 +11,8 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
+import RippleInput from "./RippleInput";
+import RippleButton from "./RippleButton";
 
 const { width: W, height: H } = Dimensions.get("window");
 const BG = require("./assets/Splash-Whippitz.png");
@@ -54,7 +56,7 @@ export default function App() {
   const sweepAnim = useRef(new Animated.Value(0)).current;
 
   const bgAnim = useRef(new Animated.Value(0)).current;
-  const shimmerX = useRef(new Animated.Value(-W * 2)).current; 
+  const shimmerX = useRef(new Animated.Value(-W * 2)).current;
   const shimmerOpacity = useRef(new Animated.Value(0)).current;
 
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -281,9 +283,21 @@ export default function App() {
           />
         </Animated.View>
 
-        <View style={styles.center} pointerEvents="none">
+        <View style={styles.center}>
           <Text style={styles.logo}>WHIPPITZ</Text>
+          <View style={{ marginTop: 20, width: "80%" }}>
+            <RippleInput placeholder="Enter text" />
+          </View>
+          <View style={{ marginTop: 20, width: "80%" }}>
+            <RippleButton
+              title="Continue"
+              onPress={() => console.log("Button pressed!")}
+            />
+
+          </View>
         </View>
+
+
       </ImageBackground>
 
       <Animated.View
@@ -334,7 +348,12 @@ function BandShimmer({ shimmerX, shimmerOpacity, color }: { shimmerX: Animated.V
 const styles = StyleSheet.create({
   container: { position: "absolute", width: W, height: H, backgroundColor: "transparent" },
   band: { position: "absolute", top: -H * 0.6, left: -W * 0.6, opacity: 1 },
-  center: { ...StyleSheet.absoluteFillObject, justifyContent: "center", alignItems: "center" },
+  center: {
+    ...StyleSheet.absoluteFillObject, justifyContent: "center", alignItems: "center",
+    paddingTop: 60,
+    margin: 30,
+    zIndex: 10,
+  },
   logo: { color: "#fff", fontSize: 32, fontWeight: "bold", letterSpacing: 2 },
   androidShim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.02)" },
 });
